@@ -7,18 +7,28 @@
 
 (provide (all-defined-out))
 
-(define-for-syntax (suite+rank->identifier stx suite rank)
+(define-for-syntax (suite+rank->identifier ctx suite rank)
   (datum->syntax
-   stx
+   ctx
    (string->symbol
     (card->string (card (syntax->datum suite)
                         (syntax->datum rank))))))
 
 (define-syntax (define-card stx)
   (syntax-parse stx
-    [(self suite:id rank:exact-positive-integer)
+    [(self suite:id rank:nat)
      #`(begin
          (define #,(suite+rank->identifier #'self #'suite #'rank) (card 'suite rank)))]))
+
+(define-syntax (define-deck stx)
+  (syntax-parse stx
+    [(self)
+     #`(begin
+         #,@(map (λ (c)
+                   (with-syntax ([s (datum->syntax #'self (card-suite c))]
+                                 [r (datum->syntax #'self (card-rank c))])
+                     #`(define #,(suite+rank->identifier #'self #'s #'r) (card 's r))))
+                 (make-deck)))]))
 
 (module+ test
   (require rackunit
@@ -30,6 +40,9 @@
     (check-equal? s1 (card 'spades 1))
     (check-equal? h13 (card 'hearts 13))
     (check-equal? d12 (card 'diamonds 12)))
-  #;(test-case "define-cards"
-    (define-cards (make-deck))
-    (check-equal? c2 (card 'clubs 2))))
+  (test-case "define-deck"
+    (define-deck)
+    (check-equal? c1 (card 'clubs 1))
+    (check-equal? c13 (card 'clubs 13))
+    (check-equal? h1 (card 'hearts 1))
+    (check-equal? h13 (card 'hearts 13))))

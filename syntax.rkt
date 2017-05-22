@@ -3,6 +3,8 @@
 (require (for-syntax racket/base
                      syntax/parse
                      "card.rkt")
+         racket/function
+         rackunit
          "card.rkt")
 
 (provide (all-defined-out))
@@ -30,6 +32,10 @@
                      #`(define #,(suite+rank->identifier #'self #'s #'r) (card 's r))))
                  (make-deck)))]))
 
+(define-syntax-rule (check-values-equal? expr (expected ...))
+  (let ([res (call-with-values (thunk expr) list)])
+    (check-equal? res (list expected ...))))
+
 (module+ test
   (require rackunit
            "card.rkt")
@@ -45,4 +51,5 @@
     (check-equal? c1 (card 'clubs 1))
     (check-equal? c13 (card 'clubs 13))
     (check-equal? h1 (card 'hearts 1))
-    (check-equal? h13 (card 'hearts 13))))
+    (check-equal? h13 (card 'hearts 13)))
+  (check-values-equal? (values 'a 'b 'c) ('a 'b 'c)))

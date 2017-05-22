@@ -156,7 +156,7 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
     (check-true (can-place? (tableu '() (list s1)) 1 (foundation '() #f)))
     (check-true (can-place? (tableu '() (list s2)) 1 (foundation (list s1) 'spades)))))
 
-(define/contract (move-from-tableu the-tableu n)
+(define/contract (take-from-tableu the-tableu n)
   (tableu? exact-positive-integer? . -> . (values tableu? (listof card?)))
   (match-define (tableu hidden visible) the-tableu)
   (define-values (left-over moved) (split-at-right visible n))
@@ -167,31 +167,49 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
           moved))
 
 (module+ test
-  (test-case "move-from-tableu"
-    (check-values-equal? (move-from-tableu (tableu '() (list s1)) 1)
+  (test-case "take-from-tableu"
+    (check-values-equal? (take-from-tableu (tableu '() (list s1)) 1)
                          ((tableu '() '()) (list s1)))
-    (check-values-equal? (move-from-tableu (tableu (list h9) (list d12)) 1)
+    (check-values-equal? (take-from-tableu (tableu (list h9) (list d12)) 1)
                          ((tableu '() (list h9)) (list d12)))
-    (check-values-equal? (move-from-tableu (tableu (list s3 d1 h3) (list d2 d9)) 2)
+    (check-values-equal? (take-from-tableu (tableu (list s3 d1 h3) (list d2 d9)) 2)
                          ((tableu (list s3 d1) (list h3)) (list d2 d9)))
-    (check-values-equal? (move-from-tableu (tableu (list s5) (list c3 h2 s1)) 2)
+    (check-values-equal? (take-from-tableu (tableu (list s5) (list c3 h2 s1)) 2)
                          ((tableu (list s5) (list c3)) (list h2 s1)))))
 
-(define/contract (move-from-foundation the-foundation n)
+(define/contract (take-from-foundation the-foundation n)
   (foundation? exact-positive-integer? . -> . (values foundation? (listof card?)))
   (unless (= n 1)
-    (error 'move-from-foundation "Can only move one card at a time from foundation"))
+    (error 'take-from-foundation "Can only move one card at a time from foundation"))
   (match-define (foundation cards suite) the-foundation)
   (define-values (left-over moved) (split-at-right cards 1))
-  (values (if (empty? left-over)
-              (struct-copy foundation the-foundation [stack left-over] [suite #f])
-              (struct-copy foundation the-foundation [stack left-over] [suite suite]))
+  (values (struct-copy foundation the-foundation
+                       [stack left-over]
+                       [suite (and (not (empty? left-over)) suite)])
           moved))
 
 (module+ test
-  (test-case "move-from-foundation"
-    (check-values-equal? (move-from-foundation (foundation (list s3 s2 s1) 'spades) 1)
+  (test-case "take-from-foundation"
+    (check-values-equal? (take-from-foundation (foundation (list s3 s2 s1) 'spades) 1)
                          ((foundation (list s3 s2) 'spades) (list s1)))
-    (check-values-equal? (move-from-foundation (foundation (list h1) 'hearts) 1)
+    (check-values-equal? (take-from-foundation (foundation (list h1) 'hearts) 1)
                          ((foundation '() #f) (list h1)))
-    (check-exn exn:fail? (thunk (move-from-foundation (foundation (list d2 d1) 'diamonds) 2)))))
+    (check-exn exn:fail? (thunk (take-from-foundation (foundation (list d2 d1) 'diamonds) 2)))))
+
+(define/contract (take-from-reserve the-reserve n)
+  (reserve? exact-positive-integer? . -> . (values reserve? (listof card?)))
+  (unless (= n 1)
+    (error 'take-from-reserve "Can only move one card at a time from reserve"))
+  (match-define (reserve deck visible) the-reserve)
+  (define-values (left-over moved) (split-at-right visible 1))
+  (values (struct-copy reserve the-reserve
+                       [visible left-over])
+          moved))
+
+(module+ test
+  (test-case "take-from-reserve"
+    (check-values-equal? (take-from-reserve (reserve '() (list s5)) 1)
+                         ((reserve '() '()) (list s5)))
+    (check-values-equal? (take-from-reserve (reserve (list h12 h5) (list s1 s5)) 1)
+                         ((reserve (list h12 h5) (list s1)) (list s5)))
+    (check-exn exn:fail? (thunk (take-from-reserve (reserve (list s1) (list c5)) 2)))))

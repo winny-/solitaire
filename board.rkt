@@ -119,9 +119,10 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
      (tableu? destination)
      (let* ([cards (take-right src-ls source-count)]
             [top (car cards)])
-       (and
-        (xor (card-black? top) (card-black? dest-card))
-        (= (add1 (card-rank top)) (card-rank dest-card))))))))
+       (if dest-card
+           (and (xor (card-black? top) (card-black? dest-card))
+                (= (add1 (card-rank top)) (card-rank dest-card)))
+           (= (card-rank top) 13)))))))
 
 (module+ test
   (test-case "can-move? no cards"
@@ -154,7 +155,8 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
   (test-case "can-place?"
     (check-true (can-place? (tableu '() (list s1)) 1 (tableu '() (list d2))))
     (check-true (can-place? (tableu '() (list s1)) 1 (foundation '() #f)))
-    (check-true (can-place? (tableu '() (list s2)) 1 (foundation (list s1) 'spades)))))
+    (check-true (can-place? (tableu '() (list s2)) 1 (foundation (list s1) 'spades)))
+    (check-false (can-place? (tableu '() (list s1)) 1 (tableu '() '())))))
 
 (define/contract (take-from-tableu the-tableu n)
   (tableu? exact-positive-integer? . -> . (values tableu? (listof card?)))
@@ -273,4 +275,5 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
     (define b3 (struct-copy board b1 [foundations (cons (foundation (list s1) 'spades)
                                                         (cdr (board-foundations b1)))]))
     (check-equal? (move b2 (board-reserve b2) 1 (car (board-foundations b2)))
-                  b3)))
+                  b3)
+    (check-exn exn:fail? (thunk (move b2 (board-reserve b2) 1 (car (board-piles b2)))))))

@@ -213,3 +213,64 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
     (check-values-equal? (take-from-reserve (reserve (list h12 h5) (list s1 s5)) 1)
                          ((reserve (list h12 h5) (list s1)) (list s5)))
     (check-exn exn:fail? (thunk (take-from-reserve (reserve (list s1) (list c5)) 2)))))
+
+(define/contract (take-from stack n)
+  (stack? exact-positive-integer? . -> . (values stack? (listof card?)))
+  ((match stack
+     [(? tableu?) take-from-tableu]
+     [(? foundation?) take-from-foundation]
+     [(? reserve?) take-from-reserve])
+   stack
+   n))
+
+(define/contract (give-to-tableu the-tableu cards)
+  (tableu? (listof card?) . -> . tableu?)
+  (struct-copy tableu the-tableu
+               [visible (append (tableu-visible the-tableu) cards)]))
+
+(define/contract (give-to-foundation the-foundation cards)
+  (foundation? (listof card?) . -> . foundation?)
+  (match-define (foundation stack suite) the-foundation)
+  (struct-copy foundation the-foundation
+               [stack (append stack cards)]
+               [suite (or suite (card-suite (car cards)))]))
+
+(define/contract (give-to-reserve the-reserve cards)
+  (reserve? (listof card?) . -> . reserve?)
+  (error 'give-to-reserve "Cannot move back onto reserve"))
+
+(define/contract (give-to stack cards)
+  (stack? (listof card?) . -> . stack?)
+  ((match stack
+     [(? tableu?) give-to-tableu]
+     [(? foundation?) give-to-foundation]
+     [(? give-to-reserve) give-to-reserve])
+   stack
+   cards))
+
+(define/contract (move the-board source source-count destination)
+  (board? stack? exact-positive-integer? stack? . -> . board?)
+  (unless (can-place? source source-count destination)
+    (error 'move "Cannot place"))
+  (define-values (new-source cards) (take-from source source-count))
+  (define new-destination (give-to destination cards))
+  (match-define (board piles foundations the-reserve) the-board)
+  (define (replace ls orig the-new)
+    (map (λ (v) (if (eq? v orig) the-new v)) ls))
+  (board (replace (replace piles source new-source) destination new-destination)
+         (replace (replace foundations source new-source) destination new-destination)
+         (cond
+           [(eq? the-reserve source) new-source]
+           [(eq? the-reserve destination) new-destination]
+           [else the-reserve])))
+
+(module+ test
+  (test-case "move"
+    (define b1 (board (for/list ([n 7]) (tableu '() '()))
+                      (for/list ([n 4]) (foundation '() #f))
+                      (reserve '() '())))
+    (define b2 (struct-copy board b1 [reserve (reserve '() (list s1))]))
+    (define b3 (struct-copy board b1 [foundations (cons (foundation (list s1) 'spades)
+                                                        (cdr (board-foundations b1)))]))
+    (check-equal? (move b2 (board-reserve b2) 1 (car (board-foundations b2)))
+                  b3)))

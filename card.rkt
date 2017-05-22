@@ -1,5 +1,7 @@
 #lang racket
 
+(require "util.rkt")
+
 (provide (all-defined-out) (struct-out card))
 
 (define suites '(diamonds hearts spades clubs))
@@ -10,11 +12,11 @@
 
 (define/contract (suite? suite)
   (any/c . -> . boolean?)
-  (and (member suite suites) #t))
+  (true? (member suite suites)))
 
 (define/contract (rank? rank)
   (any/c . -> . boolean?)
-  (and (member rank ranks) #t))
+  (true? (member rank ranks)))
 
 (define/contract (rank->name rank)
   (rank? . -> . non-empty-string?)
@@ -46,11 +48,11 @@
 
 (define/contract (card-red? c)
   (card? . -> . boolean?)
-  (and (member (card-suite c) (hash-ref colors 'red)) #t))
+  (true? (member (card-suite c) (hash-ref colors 'red))))
 
 (define/contract (card-black? c)
   (card? . -> . boolean?)
-  (and (member (card-suite c) (hash-ref colors 'black)) #t))
+  (true? (member (card-suite c) (hash-ref colors 'black))))
 
 (define/contract (make-suite suite)
   (suite? . -> . (listof card?))

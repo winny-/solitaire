@@ -146,3 +146,21 @@
     (check-true (can-place? (tableu '() (list s1)) 1 (tableu '() (list d2))))
     (check-true (can-place? (tableu '() (list s1)) 1 (foundation '() #f)))
     (check-true (can-place? (tableu '() (list s2)) 1 (foundation (list s1) 'spades)))))
+
+(define/contract (move-from-tableu the-tableu n)
+  (tableu? exact-positive-integer? . -> . (values tableu? (listof card?)))
+  (match-define (tableu hidden visible) the-tableu)
+  (define-values (moved left-over) (split-at visible n))
+  (values (if (or (not (empty? left-over)) (empty? hidden))
+              (struct-copy tableu the-tableu [visible left-over])
+              (let-values ([(new-hidden new-visible) (split-at-right hidden 1)])
+                (struct-copy tableu the-tableu [visible new-visible] [hidden new-hidden])))
+          moved))
+
+(module+ test
+  (check-values-equal? (move-from-tableu (tableu '() (list s1)) 1)
+                       ((tableu '() '()) (list s1)))
+  (check-values-equal? (move-from-tableu (tableu (list h9) (list d12)) 1)
+                       ((tableu '() (list h9)) (list d12)))
+  (check-values-equal? (move-from-tableu (tableu (list s3 d1 h3) (list d2 d9)) 2)
+                       ((tableu (list s3 d1) (list h3)) (list d2 d9))))

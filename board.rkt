@@ -1,5 +1,14 @@
 #lang racket
 
+#|
+Some notes:
+lists of cards are ascending from the bottom.
+
+For example:
+
+You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s2 s3) 'spades)
+|#
+
 (require "card.rkt")
 
 (module+ test
@@ -150,7 +159,7 @@
 (define/contract (move-from-tableu the-tableu n)
   (tableu? exact-positive-integer? . -> . (values tableu? (listof card?)))
   (match-define (tableu hidden visible) the-tableu)
-  (define-values (moved left-over) (split-at visible n))
+  (define-values (left-over moved) (split-at-right visible n))
   (values (if (or (not (empty? left-over)) (empty? hidden))
               (struct-copy tableu the-tableu [visible left-over])
               (let-values ([(new-hidden new-visible) (split-at-right hidden 1)])
@@ -158,9 +167,31 @@
           moved))
 
 (module+ test
-  (check-values-equal? (move-from-tableu (tableu '() (list s1)) 1)
-                       ((tableu '() '()) (list s1)))
-  (check-values-equal? (move-from-tableu (tableu (list h9) (list d12)) 1)
-                       ((tableu '() (list h9)) (list d12)))
-  (check-values-equal? (move-from-tableu (tableu (list s3 d1 h3) (list d2 d9)) 2)
-                       ((tableu (list s3 d1) (list h3)) (list d2 d9))))
+  (test-case "move-from-tableu"
+    (check-values-equal? (move-from-tableu (tableu '() (list s1)) 1)
+                         ((tableu '() '()) (list s1)))
+    (check-values-equal? (move-from-tableu (tableu (list h9) (list d12)) 1)
+                         ((tableu '() (list h9)) (list d12)))
+    (check-values-equal? (move-from-tableu (tableu (list s3 d1 h3) (list d2 d9)) 2)
+                         ((tableu (list s3 d1) (list h3)) (list d2 d9)))
+    (check-values-equal? (move-from-tableu (tableu (list s5) (list c3 h2 s1)) 2)
+                         ((tableu (list s5) (list c3)) (list h2 s1)))))
+
+(define/contract (move-from-foundation the-foundation n)
+  (foundation? exact-positive-integer? . -> . (values foundation? (listof card?)))
+  (unless (= n 1)
+    (error 'move-from-foundation "Can only move one card at a time from foundation"))
+  (match-define (foundation cards suite) the-foundation)
+  (define-values (left-over moved) (split-at-right cards 1))
+  (values (if (empty? left-over)
+              (struct-copy foundation the-foundation [stack left-over] [suite #f])
+              (struct-copy foundation the-foundation [stack left-over] [suite suite]))
+          moved))
+
+(module+ test
+  (test-case "move-from-foundation"
+    (check-values-equal? (move-from-foundation (foundation (list s3 s2 s1) 'spades) 1)
+                         ((foundation (list s3 s2) 'spades) (list s1)))
+    (check-values-equal? (move-from-foundation (foundation (list h1) 'hearts) 1)
+                         ((foundation '() #f) (list h1)))
+    (check-exn exn:fail? (thunk (move-from-foundation (foundation (list d2 d1) 'diamonds) 2)))))

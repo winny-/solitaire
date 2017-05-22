@@ -5,13 +5,7 @@
 (module+ test
   (require rackunit
            "syntax.rkt")
-  (define-card diamonds 1)
-  (define-card diamonds 2)
-  (define-card clubs 2)
-  (define-card spades 1)
-  (define-card spades 2)
-  (define-card hearts 5)
-  #;(define-cards (make-deck)))
+  (define-deck))
 
 (struct tableu [hidden visible]
   #:guard (λ (hidden visible name)

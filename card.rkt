@@ -5,6 +5,10 @@
 (provide (all-defined-out) (struct-out card))
 
 (define suites '(diamonds hearts spades clubs))
+(define suite-text (hash 'diamonds "♦"
+                         'hearts "♥"
+                         'spades "♠"
+                         'clubs "♣"))
 (define ranks '(1 2 3 4 5 6 7 8 9 10 11 12 13))
 (define rank-names '("ace" "2" "3" "4" "5" "6" "7" "8" "9" "10" "jack" "queen" "king"))
 (define colors (hash 'red '(diamonds hearts)
@@ -22,6 +26,10 @@
   (rank? . -> . non-empty-string?)
   (list-ref rank-names (index-of ranks rank)))
 
+(define/contract (suite->string suite)
+  (suite? . -> . non-empty-string?)
+  (hash-ref suite-text suite))
+
 (struct card [suite rank]
   #:transparent
   #:guard
@@ -31,6 +39,16 @@
     (unless (rank? rank)
       (error name "Rank ~a not in ~a" rank ranks))
     (values suite rank)))
+
+(define/contract (card->pretty-string c)
+  (card? . -> . non-empty-string?)
+  (string-append
+   (suite->string (card-suite c))
+   " "
+   (let ([s (list-ref rank-names (index-of ranks (card-rank c)))])
+     (if (member (card-rank c) '(1 11 12 13))
+         (string-upcase (substring s 0 1))
+         s))))
 
 (define/contract (card->string c)
   (card? . -> . non-empty-string?)

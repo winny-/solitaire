@@ -11,6 +11,8 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
 
 (require "card.rkt")
 
+(provide (all-defined-out))
+
 (module+ test
   (require rackunit
            "syntax.rkt")
@@ -54,6 +56,13 @@ You have a foundation with s1 s2 s3. It is represented as (foundation (list s1 s
   #:transparent)
 
 (define stack? (or/c tableu? reserve? foundation?))
+
+(define/contract (empty-stack? stack)
+  (stack? . -> . boolean?)
+  (match stack
+    [(tableu h v) (and (empty? h) (empty? v))]
+    [(reserve h v) (and (empty? h) (empty? v))]
+    [(foundation v _) (empty? v)]))
 
 (define/contract (get-movable stack)
   (stack? . -> . (listof card?))

@@ -3,6 +3,8 @@
 (require (for-syntax racket/base
                      syntax/parse
                      "card.rkt")
+         syntax/parse/define
+         racket/class
          racket/function
          rackunit
          "card.rkt")
@@ -53,3 +55,35 @@
     (check-equal? h1 (card 'hearts 1))
     (check-equal? h13 (card 'hearts 13)))
   (check-values-equal? (values 'a 'b 'c) ('a 'b 'c)))
+
+;; Borrowed shamelessly from
+;; https://github.com/deeglaze/slideshow-helpers/blob/0074e661f1112d74e45afa196beb2bb1d748133a/picts.rkt#L232-L258
+;; brush/pen not parameters, unfortunately.
+;; Imperative save-restore to the "rescue."
+(begin-for-syntax
+  (define-syntax-class (gsr dc-stx)
+    #:attributes (g s do)
+    (pattern [g:id s:id (~optional (~seq (~or (~and #:unless (~bind [guarder #'unless]))
+                                              (~and #:when (~bind [guarder #'when])))
+                                         guard:expr))
+                   r:expr ...]
+             #:with do (cond
+                         [(attribute guard) #`(guarder guard (send #,dc-stx s r ...))]
+                         [else #`(send #,dc-stx s r ...)]))))
+
+(define-simple-macro (with-save dc (~var p (gsr #'dc)) body ...)
+  (let* ([dcv dc]
+         [v (send dcv p.g)])
+    p.do
+    body ...
+    (send dcv p.s v)))
+
+(define-syntax (with-save* stx)
+  (syntax-parse stx
+    [(_ dc () body ...) (syntax/loc stx (let () body ...))]
+    [(_ dc (~and (give gives ...)
+                 ((~var p (gsr #'dcv)) (~var ps (gsr #'dcv)) ...))
+        body ...)
+     (syntax/loc stx (let ([dcv dc])
+                       (with-save dcv give
+                         (with-save* dcv (gives ...) body ...))))]))

@@ -2,7 +2,8 @@
 
 (require "util.rkt")
 
-(provide (all-defined-out) (struct-out card))
+(provide (all-defined-out)
+         (struct-out card))
 
 (define suites '(diamonds hearts spades clubs))
 (define suite-text (hash 'diamonds "♦"

@@ -6,6 +6,7 @@
          syntax/parse/define
          racket/class
          racket/function
+         racket/match
          rackunit
          "card.rkt")
 
@@ -71,7 +72,7 @@
                          [(attribute guard) #`(guarder guard (send #,dc-stx s r ...))]
                          [else #`(send #,dc-stx s r ...)]))))
 
-(define-simple-macro (with-save dc (~var p (gsr #'dc)) body ...)
+(define-syntax-parse-rule (with-save dc (~var p (gsr #'dc)) body ...)
   (let* ([dcv dc]
          [v (send dcv p.g)])
     p.do
@@ -87,3 +88,16 @@
      (syntax/loc stx (let ([dcv dc])
                        (with-save dcv give
                          (with-save* dcv (gives ...) body ...))))]))
+
+(define-match-expander obj
+  (λ (stx)
+    (syntax-parse stx
+      [(_ cls%:expr)
+       #'(obj cls% _)]
+      [(_ cls%:expr binding:id)
+       #'(? (λ (thing) (is-a? thing cls%)) binding)]
+      [(_ cls%:expr binding:id ([method:id value:expr] ...))
+       #'(and (obj cls% binding)
+              (app (λ (o) (send o method)) value) ...)]
+      [(_ cls%:expr ([method:id value:expr] ...))
+       #'(obj cls% _ ([method value] ...))])))
